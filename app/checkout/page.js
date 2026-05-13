@@ -49,12 +49,13 @@ export default function CheckoutPage() {
 
       if (productIds.length > 0) {
 
-        const { data } = await supabase
-          .from("products")
-          .select("*")
-          .in("id", productIds)
-
-        products = data || []
+        const { data, error } = await supabase
+  .from("cart_items")
+  .select(`
+    *,
+    product:products(*)
+  `)
+  .eq("user_email", user.email)
       }
 
       const mergedCart = (cartItems || []).map(item => ({
@@ -84,12 +85,17 @@ export default function CheckoutPage() {
   }
 
   const total = cart.reduce(
-    (sum, item) =>
-      sum +
-      Number(item.product?.price || 0) *
-      Number(item.quantity),
-    0
-  )
+
+  (sum, item) =>
+
+    sum +
+    (
+      Number(item.product?.price || 0)
+      * item.quantity
+    ),
+
+  0
+)
 
   async function handleCheckout() {
 
