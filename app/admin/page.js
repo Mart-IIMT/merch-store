@@ -52,9 +52,18 @@ export default function AdminPage() {
     async function loadOrders() {
 
       const { data, error } = await supabase
-        .from("orders")
-        .select("*")
-        .order("created_at", { ascending: false })
+  .from("orders")
+  .select(`
+    *,
+    order_items (
+      *,
+      products (
+        name,
+        image_url
+      )
+    )
+  `)
+  .order("timestamp", { ascending: false })
 
       if (error) {
         console.log(error)
@@ -310,7 +319,61 @@ export default function AdminPage() {
                 </div>
 
               </div>
+<div className="mt-6 border-t pt-4">
 
+  <h3 className="font-semibold mb-3">
+    Ordered Items
+  </h3>
+
+  <div className="space-y-3">
+
+    {(order.order_items || []).map((item) => (
+
+      <div
+        key={item.id}
+        className="flex gap-3 items-center border rounded-xl p-3"
+      >
+
+        <img
+          src={item.products?.image_url}
+          className="w-14 h-14 rounded-lg object-cover"
+        />
+
+        <div className="flex-1">
+
+          <p className="font-medium">
+            {item.product_name ||
+             item.products?.name}
+          </p>
+
+          <p className="text-sm text-gray-500">
+
+            Size: {item.size}
+            {" • "}
+            Qty: {item.quantity}
+
+          </p>
+
+        </div>
+
+      </div>
+    ))}
+
+  </div>
+
+</div>
+
+{order.payments && (
+
+  <a
+    href={order.payments}
+    target="_blank"
+    className="inline-block mt-4 bg-black text-white px-4 py-2 rounded-xl"
+  >
+    View Payment Proof
+  </a>
+
+)}
               <div className="mt-4 text-sm text-gray-500">
 
                 Ordered on{" "}
