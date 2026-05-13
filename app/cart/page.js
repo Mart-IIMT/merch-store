@@ -30,10 +30,13 @@ export default function CartPage() {
 
       // FETCH CART ITEMS
 
-      const { data: cartItems } = await supabase
-        .from("cart_items")
-        .select("*")
-        .eq("user_email", email)
+      const { data: cartItems, error } = await supabase
+  .from("cart_items")
+  .select("*")
+  .eq("user_email", email)
+
+console.log(cartItems)
+console.log(error)
 
       // FETCH PRODUCTS
 
