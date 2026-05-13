@@ -2,142 +2,136 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import { supabase } from "@/lib/supabase"
+import Navbar from "@/components/Navbar"
 
 export default function CheckoutPage() {
 
   const router = useRouter()
 
-  const [loading, setLoading] = useState(true)
-
   const [cart, setCart] = useState([])
 
-  const [customerName, setCustomerName] = useState("")
-  const [phone, setPhone] = useState("")
+  const [loading, setLoading] = useState(true)
 
-  const [userEmail, setUserEmail] = useState("")
+  const [customerName, setCustomerName] =
+    useState("")
+
+  const [phone, setPhone] =
+    useState("")
+
+  const [address, setAddress] =
+    useState("")
 
   useEffect(() => {
 
-    async function loadCheckout() {
+    fetchCart()
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
+  }, [])
 
-      if (!session) {
-        router.push("/login")
-        return
-      }
+  async function fetchCart() {
 
-      const email = session.user.email
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-      setUserEmail(email)
+    if (!user) {
 
-      // FETCH CART ITEMS
+      router.push("/login")
 
-      const { data: cartItems } = await supabase
-        .from("cart_items")
-        .select("*")
-        .eq("user_email", email)
-
-      const productIds =
-        cartItems?.map(item => item.product_id) || []
-
-      let products = []
-
-      if (productIds.length > 0) {
-
-        const { data, error } = await supabase
-  .from("cart_items")
-  const { data, error } = await supabase
-  .from("cart_items")
-  .select(`
-    *,
-    products (*)
-  `)
-  .eq("user_email", user.email)
-
-if (error) {
-  console.log(error)
-  return
-}
-
-const formatted = (data || []).map(item => ({
-  ...item,
-  product: item.products,
-}))
-
-setCart(formatted)
-  .eq("user_email", user.email)
-      }
-
-      const mergedCart = (cartItems || []).map(item => ({
-
-        ...item,
-
-        product: products.find(
-          p => p.id === item.product_id
-        ),
-      }))
-
-      setCart(mergedCart)
-
-      setLoading(false)
+      return
     }
 
-    loadCheckout()
+    const { data, error } = await supabase
+      .from("cart_items")
+      .select(`
+        *,
+        products (*)
+      `)
+      .eq("user_email", user.email)
 
-  }, [router])
+    if (error) {
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        Loading...
-      </div>
-    )
+      console.log(error)
+
+      setLoading(false)
+
+      return
+    }
+
+    const formatted = (data || []).map(item => ({
+
+      ...item,
+
+      product: item.products,
+
+    }))
+
+    setCart(formatted)
+
+    setLoading(false)
   }
 
   const total = cart.reduce(
 
-  (sum, item) =>
+    (sum, item) =>
 
-    sum +
-    (
-      Number(item.product?.price || 0)
-      * item.quantity
-    ),
+      sum +
+      (
+        Number(item.product?.price || 0)
+        * item.quantity
+      ),
 
-  0
-)
+    0
+  )
 
-  async function handleCheckout() {
+  async function placeOrder() {
 
-    if (!customerName || !phone) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+
+      alert("Please login")
+
+      return
+    }
+
+    if (
+      !customerName ||
+      !phone ||
+      !address
+    ) {
+
       alert("Please fill all details")
+
       return
     }
 
     // CREATE ORDER
 
-    const { data: order, error } = await supabase
-      .from("orders")
-      .insert([
-        {
-          customer_name: customerName,
-          phone,
-          email: userEmail,
-          total_amount: total,
-          status: "created",
-        },
-      ])
-      .select()
-      .single()
+    const { data: order, error: orderError } =
+      await supabase
+        .from("orders")
+        .insert([
+          {
+            customer_name: customerName,
+            phone,
+            address,
+            email: user.email,
+            total_amount: total,
+            status: "created",
+          },
+        ])
+        .select()
+        .single()
 
-    if (error) {
-      console.log(error)
-      alert(error.message)
+    if (orderError) {
+
+      console.log(orderError)
+
+      alert(orderError.message)
+
       return
     }
 
@@ -145,29 +139,33 @@ setCart(formatted)
 
     const orderItems = cart.map(item => ({
 
-  order_id: order.id,
+      order_id: order.id,
 
-  product_id: item.product_id,
+      product_id: item.product_id,
 
-  product_name: item.product?.name,
+      product_name: item.product?.name,
 
-  quantity: item.quantity,
+      quantity: item.quantity,
 
-  size: item.size,
+      size: item.size,
 
-  custom_name: item.custom_name,
+      custom_name: item.custom_name,
 
-  item_price: item.product?.price,
+      item_price: item.product?.price,
 
-}))
+    }))
 
-    const { error: orderItemsError } = await supabase
-      .from("order_items")
-      .insert(orderItems)
+    const { error: itemError } =
+      await supabase
+        .from("order_items")
+        .insert(orderItems)
 
-    if (orderItemsError) {
-      console.log(orderItemsError)
-      alert(orderItemsError.message)
+    if (itemError) {
+
+      console.log(itemError)
+
+      alert(itemError.message)
+
       return
     }
 
@@ -176,60 +174,84 @@ setCart(formatted)
     await supabase
       .from("cart_items")
       .delete()
-      .eq("user_email", userEmail)
+      .eq("user_email", user.email)
 
-    // GO TO PAYMENT
+    // REDIRECT
 
     router.push(`/payment?order_id=${order.id}`)
   }
 
+  if (loading) {
+
+    return (
+
+      <div className="min-h-screen flex items-center justify-center">
+
+        Loading...
+
+      </div>
+
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
 
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gray-100">
 
-        <div className="flex justify-between items-center mb-6">
+      <Navbar />
 
-          <h1 className="text-3xl font-bold">
-            Checkout
-          </h1>
+      <div className="max-w-6xl mx-auto p-6">
 
-          <Link href="/cart">
+        <h1 className="text-4xl font-bold mb-8">
 
-            <button className="border px-4 py-2 rounded-xl bg-white">
-              Back to Cart
-            </button>
+          Checkout
 
-          </Link>
-        </div>
+        </h1>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-8">
 
           {/* LEFT */}
 
           <div className="bg-white rounded-2xl shadow p-6">
 
-            <h2 className="text-xl font-bold mb-4">
+            <h2 className="text-2xl font-semibold mb-6">
+
               Customer Details
+
             </h2>
 
-            <input
-              placeholder="Full Name"
-              value={customerName}
-              onChange={(e) =>
-                setCustomerName(e.target.value)
-              }
-              className="w-full border p-3 rounded-xl mb-4"
-            />
+            <div className="space-y-4">
 
-            <input
-              placeholder="Phone Number"
-              value={phone}
-              onChange={(e) =>
-                setPhone(e.target.value)
-              }
-              className="w-full border p-3 rounded-xl"
-            />
+              <input
+                type="text"
+                placeholder="Full Name"
+                value={customerName}
+                onChange={(e) =>
+                  setCustomerName(e.target.value)
+                }
+                className="w-full border p-3 rounded-xl"
+              />
+
+              <input
+                type="text"
+                placeholder="Phone Number"
+                value={phone}
+                onChange={(e) =>
+                  setPhone(e.target.value)
+                }
+                className="w-full border p-3 rounded-xl"
+              />
+
+              <textarea
+                placeholder="Delivery Address"
+                value={address}
+                onChange={(e) =>
+                  setAddress(e.target.value)
+                }
+                className="w-full border p-3 rounded-xl h-32"
+              />
+
+            </div>
 
           </div>
 
@@ -237,8 +259,10 @@ setCart(formatted)
 
           <div className="bg-white rounded-2xl shadow p-6">
 
-            <h2 className="text-xl font-bold mb-4">
+            <h2 className="text-2xl font-semibold mb-6">
+
               Order Summary
+
             </h2>
 
             <div className="space-y-4">
@@ -247,49 +271,100 @@ setCart(formatted)
 
                 <div
                   key={item.id}
-                  className="flex justify-between"
+                  className="flex gap-4 border rounded-xl p-4"
                 >
 
-                  <div>
+                  <img
+                    src={item.product?.image_url}
+                    alt={item.product?.name}
+                    className="w-20 h-20 object-cover rounded-xl"
+                  />
 
-                    <p className="font-semibold">
+                  <div className="flex-1">
+
+                    <h3 className="font-semibold">
+
                       {item.product?.name}
+
+                    </h3>
+
+                    <p className="text-gray-500 text-sm">
+
+                      Size: {item.size}
+
                     </p>
 
-                    <p className="text-sm text-gray-500">
-                      {item.size} × {item.quantity}
+                    {item.custom_name && (
+
+                      <p className="text-gray-500 text-sm">
+
+                        Custom Name:
+                        {" "}
+                        {item.custom_name}
+
+                      </p>
+
+                    )}
+
+                    <p className="text-gray-500 text-sm">
+
+                      Qty: {item.quantity}
+
+                    </p>
+
+                    <p className="font-bold mt-2">
+
+                      ₹
+                      {
+                        Number(item.product?.price || 0)
+                        * item.quantity
+                      }
+
                     </p>
 
                   </div>
 
-                  <p className="font-semibold">
-                    ₹
-                    {Number(item.product?.price || 0) *
-                      Number(item.quantity)}
-                  </p>
-
                 </div>
+
               ))}
-            </div>
-
-            <div className="border-t mt-6 pt-6 flex justify-between text-2xl font-bold">
-
-              <span>Total</span>
-
-              <span>₹{total}</span>
 
             </div>
 
-            <button
-              onClick={handleCheckout}
-              className="w-full mt-6 bg-black text-white py-4 rounded-2xl text-lg font-semibold"
-            >
-              Continue to Payment
-            </button>
+            <div className="border-t mt-6 pt-6">
+
+              <div className="flex justify-between items-center">
+
+                <h2 className="text-2xl font-bold">
+
+                  Total
+
+                </h2>
+
+                <h2 className="text-3xl font-bold">
+
+                  ₹{total}
+
+                </h2>
+
+              </div>
+
+              <button
+                onClick={placeOrder}
+                className="w-full mt-6 bg-black text-white py-4 rounded-2xl text-lg font-semibold"
+              >
+
+                Proceed to Payment
+
+              </button>
+
+            </div>
 
           </div>
+
         </div>
+
       </div>
+
     </div>
   )
 }
