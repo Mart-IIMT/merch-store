@@ -69,9 +69,10 @@ export default function ProductPage() {
     console.log(error)
 
     if (error) {
-      alert("Failed to add to cart")
-      return
-    }
+  console.log(error)
+  alert(error.message)
+  return
+}
 
     alert("Added to cart")
 
