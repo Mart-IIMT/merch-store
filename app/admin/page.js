@@ -68,27 +68,7 @@ export default function AdminPage() {
 
   }, [router])
 
-  async function updateStatus(id, status) {
-
-    const { error } = await supabase
-      .from("orders")
-      .update({ status })
-      .eq("id", id)
-
-    if (error) {
-      console.log(error)
-      alert(error.message)
-      return
-    }
-
-    setOrders(
-      orders.map(order =>
-        order.id === id
-          ? { ...order, status }
-          : order
-      )
-    )
-  }
+  
 
   function exportCSV() {
 
@@ -326,28 +306,6 @@ export default function AdminPage() {
                   >
                     {order.status}
                   </span>
-
-                </div>
-
-                <div className="flex gap-3">
-
-                  <button
-                    onClick={() =>
-                      updateStatus(order.id, "confirmed")
-                    }
-                    className="bg-green-600 text-white px-4 py-2 rounded-xl"
-                  >
-                    Confirm
-                  </button>
-
-                  <button
-                    onClick={() =>
-                      updateStatus(order.id, "rejected")
-                    }
-                    className="bg-red-600 text-white px-4 py-2 rounded-xl"
-                  >
-                    Reject
-                  </button>
 
                 </div>
 

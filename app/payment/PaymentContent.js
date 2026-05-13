@@ -148,7 +148,7 @@ export default function PaymentPage() {
 
           screenshot_url: fileUrl,
 
-          status: "pending",
+          status: "paid",
 
         })
         .eq("id", orderId)
