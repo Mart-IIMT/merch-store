@@ -1,6 +1,55 @@
 import { supabase } from "@/lib/supabase"
 import Navbar from "@/components/Navbar"
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 
+export default function ProductsPage() {
+
+  const router = useRouter()
+
+  useEffect(() => {
+
+    async function checkUser() {
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+
+        router.push("/login")
+
+        return
+      }
+
+      if (
+        !user.email.endsWith(
+          "@iimtrichy.ac.in"
+        )
+      ) {
+
+        alert(
+          "Only IIM Trichy email IDs are allowed"
+        )
+
+        await supabase.auth.signOut()
+
+        router.push("/login")
+
+        return
+      }
+    }
+
+    checkUser()
+
+  }, [router])
+
+  return (
+    <div>
+      Products Page
+    </div>
+  )
+}
 export default async function ProductsPage() {
   const { data: products } = await supabase
     .from("products")
