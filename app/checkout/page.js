@@ -123,12 +123,13 @@ export default function CheckoutPage() {
     // CREATE ORDER ITEMS
 
     const orderItems = cart.map(item => ({
-      order_id: order.id,
-      product_id: item.product_id,
-      quantity: item.quantity,
-      size: item.size,
-      item_price: item.product?.price,
-    }))
+  order_id: order.id,
+  product_id: item.product_id,
+  product_name: item.product?.name,
+  quantity: item.quantity,
+  size: item.size,
+  item_price: item.product?.price,
+}))
 
     const { error: orderItemsError } = await supabase
       .from("order_items")
