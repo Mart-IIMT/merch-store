@@ -42,28 +42,29 @@ export default function CheckoutPage() {
         .select("*")
         .eq("user_email", email)
 
-      // FETCH PRODUCTS
-
       const productIds =
         cartItems?.map(item => item.product_id) || []
 
-      const { data: products } = await supabase
-        .from("products")
-        .select("*")
-        .in("id", productIds)
+      let products = []
 
-      // MERGE
+      if (productIds.length > 0) {
 
-      const mergedCart = cartItems.map(item => {
+        const { data } = await supabase
+          .from("products")
+          .select("*")
+          .in("id", productIds)
 
-        const product =
-          products.find(p => p.id === item.product_id)
+        products = data || []
+      }
 
-        return {
-          ...item,
-          product,
-        }
-      })
+      const mergedCart = (cartItems || []).map(item => ({
+
+        ...item,
+
+        product: products.find(
+          p => p.id === item.product_id
+        ),
+      }))
 
       setCart(mergedCart)
 
@@ -72,7 +73,7 @@ export default function CheckoutPage() {
 
     loadCheckout()
 
-  }, [])
+  }, [router])
 
   if (loading) {
     return (
@@ -114,7 +115,8 @@ export default function CheckoutPage() {
       .single()
 
     if (error) {
-      alert("Error creating order")
+      console.log(error)
+      alert(error.message)
       return
     }
 
@@ -128,11 +130,17 @@ export default function CheckoutPage() {
       item_price: item.product?.price,
     }))
 
-    await supabase
+    const { error: orderItemsError } = await supabase
       .from("order_items")
       .insert(orderItems)
 
-    // CLEAR USER CART
+    if (orderItemsError) {
+      console.log(orderItemsError)
+      alert(orderItemsError.message)
+      return
+    }
+
+    // CLEAR CART
 
     await supabase
       .from("cart_items")

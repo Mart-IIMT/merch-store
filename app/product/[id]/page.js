@@ -25,8 +25,10 @@ export default function ProductPage() {
         .eq("id", params.id)
         .single()
 
-      console.log(data)
-      console.log(error)
+      if (error) {
+        console.log(error)
+        return
+      }
 
       setProduct(data)
     }
@@ -53,26 +55,50 @@ export default function ProductPage() {
 
     const email = user.email
 
-    const payload = {
-      user_email: email,
-      product_id: product.id,
-      quantity: quantity,
-      size: selectedSize,
-    }
+    // CHECK IF ITEM ALREADY EXISTS
 
-    console.log(payload)
-
-    const { error } = await supabase
+    const { data: existing } = await supabase
       .from("cart_items")
-      .insert([payload])
+      .select("*")
+      .eq("user_email", email)
+      .eq("product_id", product.id)
+      .eq("size", selectedSize)
+      .maybeSingle()
 
-    console.log(error)
+    if (existing) {
 
-    if (error) {
-  console.log(error)
-  alert(error.message)
-  return
-}
+      const { error } = await supabase
+        .from("cart_items")
+        .update({
+          quantity: existing.quantity + quantity,
+        })
+        .eq("id", existing.id)
+
+      if (error) {
+        console.log(error)
+        alert(error.message)
+        return
+      }
+
+    } else {
+
+      const { error } = await supabase
+        .from("cart_items")
+        .insert([
+          {
+            user_email: email,
+            product_id: product.id,
+            quantity,
+            size: selectedSize,
+          },
+        ])
+
+      if (error) {
+        console.log(error)
+        alert(error.message)
+        return
+      }
+    }
 
     alert("Added to cart")
 
@@ -92,21 +118,40 @@ export default function ProductPage() {
 
       <div className="max-w-5xl mx-auto">
 
-        <Link href="/products">
+        <div className="flex justify-between items-center mb-6">
 
-          <button className="mb-6 border px-4 py-2 rounded-xl bg-white">
-            ← Back to Products
-          </button>
+          <Link href="/products">
 
-        </Link>
+            <button className="border px-4 py-2 rounded-xl bg-white">
+              ← Back to Products
+            </button>
+
+          </Link>
+
+          <Link href="/cart">
+
+            <button className="border px-4 py-2 rounded-xl bg-white">
+              View Cart
+            </button>
+
+          </Link>
+        </div>
 
         <div className="grid md:grid-cols-2 gap-8 bg-white rounded-2xl shadow p-6">
 
-          <img
-            src={product.image_url}
-            alt={product.name}
-            className="w-full rounded-2xl"
-          />
+          {/* IMAGE */}
+
+          <div>
+
+            <img
+              src={product.image_url}
+              alt={product.name}
+              className="w-full rounded-2xl object-cover"
+            />
+
+          </div>
+
+          {/* DETAILS */}
 
           <div>
 
@@ -118,14 +163,16 @@ export default function ProductPage() {
               {product.description}
             </p>
 
-            <p className="text-3xl font-bold mb-6">
+            <p className="text-3xl font-bold mb-8">
               ₹{product.price}
             </p>
 
+            {/* SIZE */}
+
             <div className="mb-6">
 
-              <p className="font-semibold mb-2">
-                Size
+              <p className="font-semibold mb-3">
+                Select Size
               </p>
 
               <div className="flex gap-3">
@@ -148,30 +195,61 @@ export default function ProductPage() {
               </div>
             </div>
 
-            <div className="mb-6">
+            {/* QUANTITY */}
 
-              <p className="font-semibold mb-2">
+            <div className="mb-8">
+
+              <p className="font-semibold mb-3">
                 Quantity
               </p>
 
-              <input
-                type="number"
-                min="1"
-                value={quantity}
-                onChange={(e) =>
-                  setQuantity(Number(e.target.value))
-                }
-                className="border p-2 rounded-xl w-24"
-              />
+              <div className="flex items-center gap-4">
 
+                <button
+                  onClick={() =>
+                    setQuantity(Math.max(1, quantity - 1))
+                  }
+                  className="border px-4 py-2 rounded-xl bg-white"
+                >
+                  -
+                </button>
+
+                <span className="text-xl font-bold">
+                  {quantity}
+                </span>
+
+                <button
+                  onClick={() =>
+                    setQuantity(quantity + 1)
+                  }
+                  className="border px-4 py-2 rounded-xl bg-white"
+                >
+                  +
+                </button>
+
+              </div>
             </div>
 
-            <button
-              onClick={addToCart}
-              className="w-full bg-black text-white py-4 rounded-2xl text-lg font-semibold"
-            >
-              Add to Cart
-            </button>
+            {/* ACTIONS */}
+
+            <div className="flex gap-4">
+
+              <button
+                onClick={addToCart}
+                className="flex-1 bg-black text-white py-4 rounded-2xl text-lg font-semibold"
+              >
+                Add to Cart
+              </button>
+
+              <Link href="/checkout" className="flex-1">
+
+                <button className="w-full border py-4 rounded-2xl text-lg font-semibold bg-white">
+                  Checkout
+                </button>
+
+              </Link>
+
+            </div>
 
           </div>
         </div>
