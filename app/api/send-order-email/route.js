@@ -1,6 +1,8 @@
 import { Resend } from "resend"
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resend = new Resend(
+  process.env.RESEND_API_KEY
+)
 
 export async function POST(req) {
 
@@ -15,42 +17,39 @@ export async function POST(req) {
       totalAmount,
     } = body
 
-    // EMAIL TO CUSTOMER
+    const response =
+      await resend.emails.send({
 
-    await resend.emails.send({
+        from: "onboarding@resend.dev",
 
-      from: "Merch Store <onboarding@resend.dev>",
+        to: customerEmail,
 
-      to: customerEmail,
+        subject: "Order Received Successfully",
 
-      subject: "Order Received Successfully",
+        html: `
+          <h2>Thank you for your order!</h2>
 
-      html: `
-        <h2>Thank you for your order!</h2>
+          <p>Hello ${customerName},</p>
 
-        <p>Hello ${customerName},</p>
+          <p>
+            Your payment submission has been received successfully.
+          </p>
 
-        <p>
-          Your payment submission has been received successfully.
-        </p>
+          <p>
+            <strong>Order ID:</strong> ${orderId}
+          </p>
 
-        <p>
-          <strong>Order ID:</strong> ${orderId}
-        </p>
+          <p>
+            <strong>Total:</strong> ₹${totalAmount}
+          </p>
 
-        <p>
-          <strong>Total:</strong> ₹${totalAmount}
-        </p>
+          <p>
+            We will verify your payment and process your order shortly.
+          </p>
+        `,
+      })
 
-        <p>
-          We will verify your payment and process your order shortly.
-        </p>
-      `,
-    })
-
-    // EMAIL TO ADMIN
-
-    
+    console.log(response)
 
     return Response.json({
       success: true,
