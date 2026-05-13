@@ -10,7 +10,6 @@ export default function OrdersPage() {
   const router = useRouter()
 
   const [loading, setLoading] = useState(true)
-
   const [orders, setOrders] = useState([])
 
   useEffect(() => {
@@ -36,7 +35,8 @@ export default function OrdersPage() {
         .eq("email", email)
         .order("created_at", { ascending: false })
 
-      if (!ordersData) {
+      if (!ordersData || ordersData.length === 0) {
+        setOrders([])
         setLoading(false)
         return
       }
@@ -53,14 +53,21 @@ export default function OrdersPage() {
             .eq("order_id", order.id)
 
           const productIds =
-            items?.map(i => i.product_id) || []
+            items?.map(item => item.product_id) || []
 
-          const { data: products } = await supabase
-            .from("products")
-            .select("*")
-            .in("id", productIds)
+          let products = []
 
-          const mergedItems = items.map(item => ({
+          if (productIds.length > 0) {
+
+            const { data } = await supabase
+              .from("products")
+              .select("*")
+              .in("id", productIds)
+
+            products = data || []
+          }
+
+          const mergedItems = (items || []).map(item => ({
             ...item,
             product: products.find(
               p => p.id === item.product_id
@@ -81,7 +88,7 @@ export default function OrdersPage() {
 
     loadOrders()
 
-  }, [])
+  }, [router])
 
   if (loading) {
     return (
@@ -136,7 +143,7 @@ export default function OrdersPage() {
                       Order ID
                     </p>
 
-                    <p className="text-gray-500 text-sm">
+                    <p className="text-gray-500 text-sm break-all">
                       {order.id}
                     </p>
 
@@ -144,12 +151,12 @@ export default function OrdersPage() {
 
                   <div className="text-right">
 
-                    <p className="font-bold text-xl">
+                    <p className="font-bold text-2xl">
                       ₹{order.total_amount}
                     </p>
 
                     <p
-                      className={`mt-2 inline-block px-3 py-1 rounded-full text-sm ${
+                      className={`mt-2 inline-block px-3 py-1 rounded-full text-sm font-semibold ${
                         order.status === "confirmed"
                           ? "bg-green-100 text-green-700"
                           : order.status === "rejected"
@@ -165,11 +172,11 @@ export default function OrdersPage() {
 
                 <div className="space-y-4">
 
-                  {order.items.map((item) => (
+                  {(order.items || []).map((item) => (
 
                     <div
                       key={item.id}
-                      className="flex gap-4 border rounded-xl p-4"
+                      className="flex gap-4 border rounded-2xl p-4"
                     >
 
                       <img
@@ -180,7 +187,7 @@ export default function OrdersPage() {
 
                       <div className="flex-1">
 
-                        <h2 className="font-bold">
+                        <h2 className="font-bold text-lg">
                           {item.product?.name}
                         </h2>
 
@@ -189,16 +196,18 @@ export default function OrdersPage() {
                         </p>
 
                         <p className="text-gray-500">
-                          Qty: {item.quantity}
+                          Quantity: {item.quantity}
                         </p>
 
                       </div>
 
-                      <p className="font-bold">
+                      <div className="font-bold text-lg">
+
                         ₹
                         {Number(item.product?.price || 0) *
                           Number(item.quantity)}
-                      </p>
+
+                      </div>
 
                     </div>
                   ))}
@@ -206,8 +215,7 @@ export default function OrdersPage() {
 
                 <div className="mt-6 text-sm text-gray-500">
 
-                  Ordered on:
-                  {" "}
+                  Ordered on{" "}
                   {new Date(order.created_at)
                     .toLocaleString()}
 
