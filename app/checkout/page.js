@@ -51,10 +51,25 @@ export default function CheckoutPage() {
 
         const { data, error } = await supabase
   .from("cart_items")
+  const { data, error } = await supabase
+  .from("cart_items")
   .select(`
     *,
-    product:products(*)
+    products (*)
   `)
+  .eq("user_email", user.email)
+
+if (error) {
+  console.log(error)
+  return
+}
+
+const formatted = (data || []).map(item => ({
+  ...item,
+  product: item.products,
+}))
+
+setCart(formatted)
   .eq("user_email", user.email)
       }
 
