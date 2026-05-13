@@ -28,7 +28,7 @@ export default function LoginPage() {
 
         <button
           onClick={signInWithGoogle}
-          className="w-full bg-black text-white py-3 rounded-xl hover:opacity-90 transition"
+          className="w-full bg-black text-white py-3 rounded-xl"
         >
           Sign in with Google
         </button>
