@@ -50,34 +50,7 @@ export async function POST(req) {
 
     // EMAIL TO ADMIN
 
-    await resend.emails.send({
-
-      from: "Merch Store <onboarding@resend.dev>",
-
-      to: "mart@iimtrichy.ac.in",
-
-      subject: "New Merch Order Received",
-
-      html: `
-        <h2>New Order Received</h2>
-
-        <p>
-          <strong>Customer:</strong> ${customerName}
-        </p>
-
-        <p>
-          <strong>Email:</strong> ${customerEmail}
-        </p>
-
-        <p>
-          <strong>Order ID:</strong> ${orderId}
-        </p>
-
-        <p>
-          <strong>Total:</strong> ₹${totalAmount}
-        </p>
-      `,
-    })
+    
 
     return Response.json({
       success: true,
