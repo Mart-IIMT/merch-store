@@ -1,259 +1,371 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 
 export default function AdminPage() {
-  const [orders, setOrders] = useState([])
-  const [filteredOrders, setFilteredOrders] = useState([])
-  const [activeTab, setActiveTab] = useState("pending")
-  const [search, setSearch] = useState("")
-  const [selectedOrder, setSelectedOrder] = useState(null)
-  const [orderItems, setOrderItems] = useState([])
+
+  const router = useRouter()
+
   const [loading, setLoading] = useState(true)
 
-  async function fetchOrders() {
-    setLoading(true)
-    const { data } = await supabase.from("orders").select("*")
-    setOrders(data || [])
-    setLoading(false)
-  }
+  const [orders, setOrders] = useState([])
+
+  const [searchPhone, setSearchPhone] = useState("")
 
   useEffect(() => {
-    fetchOrders()
-  }, [])
 
-  useEffect(() => {
-    let filtered = orders.filter(o => o.status === activeTab)
+    async function checkAdmin() {
 
-    if (search) {
-      filtered = filtered.filter(o =>
-        o.phone?.toLowerCase().includes(search.toLowerCase())
-      )
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (!session) {
+        router.push("/login")
+        return
+      }
+
+      const email = session.user.email
+
+      // ALLOWED ADMINS
+
+      const allowedAdmins = [
+        "mart@iimtrichy.ac.in",
+      ]
+
+      if (!allowedAdmins.includes(email)) {
+
+        alert("Access denied")
+
+        router.push("/products")
+
+        return
+      }
+
+      loadOrders()
+
+      setLoading(false)
     }
 
-    setFilteredOrders(filtered)
-  }, [orders, activeTab, search])
+    async function loadOrders() {
 
-  async function updateStatus(orderId, newStatus) {
-    await supabase
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .order("created_at", { ascending: false })
+
+      if (error) {
+        console.log(error)
+        return
+      }
+
+      setOrders(data || [])
+    }
+
+    checkAdmin()
+
+  }, [router])
+
+  async function updateStatus(id, status) {
+
+    const { error } = await supabase
       .from("orders")
-      .update({ status: newStatus })
-      .eq("id", orderId)
+      .update({ status })
+      .eq("id", id)
 
-    fetchOrders()
+    if (error) {
+      console.log(error)
+      alert(error.message)
+      return
+    }
+
+    setOrders(
+      orders.map(order =>
+        order.id === id
+          ? { ...order, status }
+          : order
+      )
+    )
   }
 
-  async function openOrder(order) {
-    setSelectedOrder(order)
+  function exportCSV() {
 
-    const { data } = await supabase
-      .from("order_items")
-      .select("*")
-      .eq("order_id", order.id)
+    const headers = [
+      "Customer Name",
+      "Phone",
+      "Email",
+      "Total Amount",
+      "Status",
+      "Created At",
+    ]
 
-    const productIds = data.map(i => i.product_id)
+    const rows = filteredOrders.map(order => [
+      order.customer_name,
+      order.phone,
+      order.email,
+      order.total_amount,
+      order.status,
+      order.created_at,
+    ])
 
-    const { data: products } = await supabase
-      .from("products")
-      .select("*")
-      .in("id", productIds)
+    const csvContent =
+      [
+        headers.join(","),
+        ...rows.map(row => row.join(",")),
+      ].join("\n")
 
-    const merged = data.map(item => ({
-      ...item,
-      product: products.find(p => p.id === item.product_id)
-    }))
+    const blob = new Blob(
+      [csvContent],
+      { type: "text/csv;charset=utf-8;" }
+    )
 
-    setOrderItems(merged)
-  }
-
-  async function exportCSV() {
-    const { data: orders } = await supabase.from("orders").select("*")
-    const { data: items } = await supabase.from("order_items").select("*")
-    const { data: products } = await supabase.from("products").select("*")
-
-    const rows = []
-
-    orders.forEach(order => {
-      const orderItems = items.filter(i => i.order_id === order.id)
-
-      orderItems.forEach(item => {
-        const product = products.find(p => p.id === item.product_id)
-
-        rows.push({
-          date: new Date(order.created_at).toLocaleString(),
-          order_id: order.id,
-          name: order.customer_name,
-          phone: order.phone,
-          product: product?.name || "",
-          size: item.size,
-          quantity: item.quantity,
-          item_total: (Number(product?.price) || 0) * item.quantity,
-          order_total: order.total_amount,
-          utr: order.utr || "",
-          status: order.status
-        })
-      })
-    })
-
-    const header =
-      "Date,Order ID,Name,Phone,Product,Size,Qty,Item Total,Order Total,UTR,Status\n"
-
-    const csv =
-      header +
-      rows
-        .map(r =>
-          `${r.date},${r.order_id},${r.name},${r.phone},${r.product},${r.size},${r.quantity},${r.item_total},${r.order_total},${r.utr},${r.status}`
-        )
-        .join("\n")
-
-    const blob = new Blob([csv], { type: "text/csv" })
     const url = URL.createObjectURL(blob)
 
-    const a = document.createElement("a")
-    a.href = url
-    a.download = "orders.csv"
-    a.click()
+    const link = document.createElement("a")
+
+    link.href = url
+
+    link.setAttribute(
+      "download",
+      "orders.csv"
+    )
+
+    document.body.appendChild(link)
+
+    link.click()
+
+    document.body.removeChild(link)
   }
 
-  // 📊 METRICS
-  const pendingCount = orders.filter(o => o.status === "pending").length
-  const confirmedCount = orders.filter(o => o.status === "confirmed").length
-  const rejectedCount = orders.filter(o => o.status === "rejected").length
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Loading...
+      </div>
+    )
+  }
 
-  const revenue = orders
-    .filter(o => o.status === "confirmed")
-    .reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0)
+  const filteredOrders = orders.filter(order =>
+    order.phone?.includes(searchPhone)
+  )
 
-  if (loading) return <div className="p-6">Loading...</div>
+  const totalRevenue = filteredOrders.reduce(
+    (sum, order) =>
+      sum + Number(order.total_amount || 0),
+    0
+  )
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="min-h-screen bg-gray-100 p-6">
 
-      <h1 className="text-3xl font-bold mb-6">
-        Admin Dashboard
-      </h1>
+      <div className="max-w-7xl mx-auto">
 
-      {/* Metrics */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-4 rounded shadow">
-          <p className="text-gray-500">Pending</p>
-          <p className="text-2xl font-bold">{pendingCount}</p>
-        </div>
+        <div className="flex justify-between items-center mb-8">
 
-        <div className="bg-white p-4 rounded shadow">
-          <p className="text-gray-500">Confirmed</p>
-          <p className="text-2xl font-bold">{confirmedCount}</p>
-        </div>
+          <div>
 
-        <div className="bg-white p-4 rounded shadow">
-          <p className="text-gray-500">Rejected</p>
-          <p className="text-2xl font-bold">{rejectedCount}</p>
-        </div>
+            <h1 className="text-4xl font-bold">
+              Admin Dashboard
+            </h1>
 
-        <div className="bg-white p-4 rounded shadow">
-          <p className="text-gray-500">Revenue</p>
-          <p className="text-2xl font-bold">₹{revenue}</p>
-        </div>
-      </div>
+            <p className="text-gray-500 mt-2">
+              Manage all customer orders
+            </p>
 
-      {/* Controls */}
-      <div className="flex justify-between mb-4">
-        <input
-          placeholder="Search by phone"
-          className="border p-2 rounded"
-          onChange={(e) => setSearch(e.target.value)}
-        />
-
-        <button
-          onClick={exportCSV}
-          className="bg-black text-white px-4 py-2 rounded"
-        >
-          Export CSV
-        </button>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-4 mb-6">
-        {["pending", "confirmed", "rejected"].map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded ${
-              activeTab === tab
-                ? "bg-black text-white"
-                : "bg-gray-200"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
-
-      {/* Orders */}
-      {filteredOrders.map(order => (
-        <div key={order.id} className="bg-white p-4 rounded shadow mb-3">
-          <div className="flex justify-between">
-            <div>
-              <p className="font-semibold">{order.customer_name}</p>
-              <p className="text-sm">{order.phone}</p>
-            </div>
-
-            <p className="font-bold">₹{order.total_amount}</p>
           </div>
 
           <button
-            onClick={() => openOrder(order)}
-            className="mt-2 text-blue-600"
+            onClick={exportCSV}
+            className="bg-black text-white px-5 py-3 rounded-xl"
           >
-            View Details
+            Export CSV
           </button>
 
-          {activeTab === "pending" && (
-            <div className="flex gap-2 mt-2">
-              <button
-                onClick={() => updateStatus(order.id, "confirmed")}
-                className="bg-green-600 text-white px-3 py-1 rounded"
-              >
-                Confirm
-              </button>
-
-              <button
-                onClick={() => updateStatus(order.id, "rejected")}
-                className="bg-red-600 text-white px-3 py-1 rounded"
-              >
-                Reject
-              </button>
-            </div>
-          )}
         </div>
-      ))}
 
-      {/* Modal */}
-      {selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-          <div className="bg-white p-6 rounded w-[400px]">
-            <h2 className="text-xl font-bold mb-2">
-              Order Details
+        {/* METRICS */}
+
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
+
+          <div className="bg-white rounded-2xl shadow p-6">
+
+            <p className="text-gray-500 mb-2">
+              Total Orders
+            </p>
+
+            <h2 className="text-4xl font-bold">
+              {filteredOrders.length}
             </h2>
 
-            {orderItems.map((item, i) => (
-              <div key={i} className="border p-2 mt-2">
-                <p>{item.product?.name}</p>
-                <p>Qty: {item.quantity}</p>
-                <p>Size: {item.size}</p>
-              </div>
-            ))}
-
-            <button
-              onClick={() => setSelectedOrder(null)}
-              className="mt-4 bg-black text-white px-4 py-2 rounded"
-            >
-              Close
-            </button>
           </div>
+
+          <div className="bg-white rounded-2xl shadow p-6">
+
+            <p className="text-gray-500 mb-2">
+              Revenue
+            </p>
+
+            <h2 className="text-4xl font-bold">
+              ₹{totalRevenue}
+            </h2>
+
+          </div>
+
+          <div className="bg-white rounded-2xl shadow p-6">
+
+            <p className="text-gray-500 mb-2">
+              Confirmed Orders
+            </p>
+
+            <h2 className="text-4xl font-bold">
+
+              {
+                filteredOrders.filter(
+                  o => o.status === "confirmed"
+                ).length
+              }
+
+            </h2>
+
+          </div>
+
         </div>
-      )}
+
+        {/* SEARCH */}
+
+        <div className="bg-white rounded-2xl shadow p-6 mb-8">
+
+          <input
+            placeholder="Search by phone number"
+            value={searchPhone}
+            onChange={(e) =>
+              setSearchPhone(e.target.value)
+            }
+            className="w-full border p-3 rounded-xl"
+          />
+
+        </div>
+
+        {/* ORDERS */}
+
+        <div className="space-y-6">
+
+          {filteredOrders.map((order) => (
+
+            <div
+              key={order.id}
+              className="bg-white rounded-2xl shadow p-6"
+            >
+
+              <div className="grid md:grid-cols-4 gap-6">
+
+                <div>
+
+                  <p className="text-gray-500 text-sm">
+                    Customer
+                  </p>
+
+                  <p className="font-bold">
+                    {order.customer_name}
+                  </p>
+
+                </div>
+
+                <div>
+
+                  <p className="text-gray-500 text-sm">
+                    Phone
+                  </p>
+
+                  <p className="font-bold">
+                    {order.phone}
+                  </p>
+
+                </div>
+
+                <div>
+
+                  <p className="text-gray-500 text-sm">
+                    Email
+                  </p>
+
+                  <p className="font-bold break-all">
+                    {order.email}
+                  </p>
+
+                </div>
+
+                <div>
+
+                  <p className="text-gray-500 text-sm">
+                    Total
+                  </p>
+
+                  <p className="font-bold text-xl">
+                    ₹{order.total_amount}
+                  </p>
+
+                </div>
+
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between mt-6 gap-4">
+
+                <div>
+
+                  <span
+                    className={`px-4 py-2 rounded-full text-sm font-semibold ${
+                      order.status === "confirmed"
+                        ? "bg-green-100 text-green-700"
+                        : order.status === "rejected"
+                        ? "bg-red-100 text-red-700"
+                        : "bg-yellow-100 text-yellow-700"
+                    }`}
+                  >
+                    {order.status}
+                  </span>
+
+                </div>
+
+                <div className="flex gap-3">
+
+                  <button
+                    onClick={() =>
+                      updateStatus(order.id, "confirmed")
+                    }
+                    className="bg-green-600 text-white px-4 py-2 rounded-xl"
+                  >
+                    Confirm
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      updateStatus(order.id, "rejected")
+                    }
+                    className="bg-red-600 text-white px-4 py-2 rounded-xl"
+                  >
+                    Reject
+                  </button>
+
+                </div>
+
+              </div>
+
+              <div className="mt-4 text-sm text-gray-500">
+
+                Ordered on{" "}
+                {new Date(order.created_at)
+                  .toLocaleString()}
+
+              </div>
+
+            </div>
+          ))}
+
+        </div>
+      </div>
     </div>
   )
 }
