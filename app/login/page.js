@@ -20,7 +20,7 @@ export default function LoginPage() {
 
         const email = session.user.email
 
-        // ALLOW ONLY IIM TRICHY EMAILS
+        // DOMAIN RESTRICTION
 
         if (
           !email.endsWith("@iimtrichy.ac.in")
@@ -49,11 +49,6 @@ export default function LoginPage() {
 
       provider: "google",
 
-      options: {
-
-        redirectTo:
-          `${window.location.origin}/login`,
-      },
     })
   }
 
