@@ -1,40 +1,95 @@
 "use client"
 
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 
 export default function LoginPage() {
 
-  async function signInWithGoogle() {
+  const router = useRouter()
+
+  useEffect(() => {
+
+    async function checkUser() {
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (session?.user) {
+
+        const email = session.user.email
+
+        // ALLOW ONLY IIM TRICHY EMAILS
+
+        if (
+          !email.endsWith("@iimtrichy.ac.in")
+        ) {
+
+          alert(
+            "Only IIM Trichy email IDs are allowed"
+          )
+
+          await supabase.auth.signOut()
+
+          return
+        }
+
+        router.push("/products")
+      }
+    }
+
+    checkUser()
+
+  }, [router])
+
+  async function loginWithGoogle() {
 
     await supabase.auth.signInWithOAuth({
+
       provider: "google",
+
       options: {
-        redirectTo: "https://merch-store-six.vercel.app/auth/callback"
-      }
+
+        redirectTo:
+          `${window.location.origin}/login`,
+      },
     })
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
 
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-[350px]">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-6">
 
-        <h1 className="text-3xl font-bold mb-2 text-center">
-          Welcome
+      <div className="bg-white p-10 rounded-2xl shadow max-w-md w-full text-center">
+
+        <h1 className="text-4xl font-bold mb-4">
+
+          IIM Trichy Merch Store
+
         </h1>
 
-        <p className="text-gray-500 text-center mb-6">
-          Sign in using your institute email
+        <p className="text-gray-500 mb-8">
+
+          Sign in using your
+          {" "}
+          @iimtrichy.ac.in
+          {" "}
+          email ID
+
         </p>
 
         <button
-          onClick={signInWithGoogle}
-          className="w-full bg-black text-white py-3 rounded-xl hover:opacity-90 transition"
+          onClick={loginWithGoogle}
+          className="w-full bg-black text-white py-4 rounded-2xl text-lg font-semibold"
         >
+
           Continue with Google
+
         </button>
 
       </div>
+
     </div>
   )
 }
