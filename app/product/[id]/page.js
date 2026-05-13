@@ -1,132 +1,177 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useParams } from "next/navigation"
+import { useEffect, useState } from "react"
+import { useParams, useRouter } from "next/navigation"
+import Link from "next/link"
 import { supabase } from "@/lib/supabase"
-import { addToCart } from "@/lib/cart"
-import Navbar from "@/components/Navbar"
-import { useRouter } from "next/navigation"
 
 export default function ProductPage() {
+
   const params = useParams()
+  const router = useRouter()
 
   const [product, setProduct] = useState(null)
-  const [size, setSize] = useState("M")
+
+  const [selectedSize, setSelectedSize] = useState("M")
   const [quantity, setQuantity] = useState(1)
 
   useEffect(() => {
+
     async function fetchProduct() {
-      const { data } = await supabase
+
+      const { data, error } = await supabase
         .from("products")
         .select("*")
         .eq("id", params.id)
         .single()
 
+      console.log(data)
+      console.log(error)
+
       setProduct(data)
     }
 
-    if (params?.id) fetchProduct()
+    fetchProduct()
+
   }, [params.id])
 
-  if (!product) return <div className="p-6">Loading...</div>
+  async function addToCart() {
 
-  function handleAddToCart() {
-    async function addToCart() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    if (!user) {
+      router.push("/login")
+      return
+    }
 
-  if (!user) {
-    router.push("/login")
-    return
-  }
+    if (!product) {
+      alert("Product not loaded")
+      return
+    }
 
-  const email = user.email
+    const email = user.email
 
-  // CHECK EXISTING ITEM
+    const payload = {
+      user_email: email,
+      product_id: product.id,
+      quantity: quantity,
+      size: selectedSize,
+    }
 
-  const { data: existing } = await supabase
-    .from("cart_items")
-    .select("*")
-    .eq("user_email", email)
-    .eq("product_id", product.id)
-    .eq("size", selectedSize)
-    .single()
+    console.log(payload)
 
-  if (existing) {
-
-    await supabase
+    const { error } = await supabase
       .from("cart_items")
-      .update({
-        quantity: existing.quantity + quantity,
-      })
-      .eq("id", existing.id)
+      .insert([payload])
 
-  } else {
+    console.log(error)
 
-    await supabase
-      .from("cart_items")
-      .insert([
-        {
-          user_email: email,
-          product_id: product.id,
-          quantity,
-          size: selectedSize,
-        },
-      ])
-  }
-
-  alert("Added to cart")
-}
+    if (error) {
+      alert("Failed to add to cart")
+      return
+    }
 
     alert("Added to cart")
+
+    router.push("/cart")
+  }
+
+  if (!product) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Loading...
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
+    <div className="min-h-screen bg-gray-100 p-6">
 
-      <div className="p-6">
-        <div className="max-w-xl mx-auto bg-white rounded-xl shadow-sm p-6">
-          <h1 className="text-2xl font-semibold mb-4">
-            {product.name}
-          </h1>
+      <div className="max-w-5xl mx-auto">
+
+        <Link href="/products">
+
+          <button className="mb-6 border px-4 py-2 rounded-xl bg-white">
+            ← Back to Products
+          </button>
+
+        </Link>
+
+        <div className="grid md:grid-cols-2 gap-8 bg-white rounded-2xl shadow p-6">
 
           <img
             src={product.image_url}
-            className="rounded-lg mb-4"
+            alt={product.name}
+            className="w-full rounded-2xl"
           />
 
-          <p className="text-lg font-medium mb-4">
-            ₹{product.price}
-          </p>
+          <div>
 
-          <div className="space-y-3">
-            <select
-              onChange={(e) => setSize(e.target.value)}
-              className="border p-2 w-full rounded"
-            >
-              <option>S</option>
-              <option>M</option>
-              <option>L</option>
-            </select>
+            <h1 className="text-4xl font-bold mb-4">
+              {product.name}
+            </h1>
 
-            <input
-              type="number"
-              value={quantity}
-              onChange={(e) =>
-                setQuantity(Number(e.target.value))
-              }
-              className="border p-2 w-full rounded"
-            />
+            <p className="text-gray-600 mb-6">
+              {product.description}
+            </p>
+
+            <p className="text-3xl font-bold mb-6">
+              ₹{product.price}
+            </p>
+
+            <div className="mb-6">
+
+              <p className="font-semibold mb-2">
+                Size
+              </p>
+
+              <div className="flex gap-3">
+
+                {["S", "M", "L", "XL"].map((size) => (
+
+                  <button
+                    key={size}
+                    onClick={() => setSelectedSize(size)}
+                    className={`px-4 py-2 rounded-xl border ${
+                      selectedSize === size
+                        ? "bg-black text-white"
+                        : "bg-white"
+                    }`}
+                  >
+                    {size}
+                  </button>
+
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-6">
+
+              <p className="font-semibold mb-2">
+                Quantity
+              </p>
+
+              <input
+                type="number"
+                min="1"
+                value={quantity}
+                onChange={(e) =>
+                  setQuantity(Number(e.target.value))
+                }
+                className="border p-2 rounded-xl w-24"
+              />
+
+            </div>
 
             <button
-              onClick={handleAddToCart}
-              className="bg-black text-white w-full py-2 rounded"
+              onClick={addToCart}
+              className="w-full bg-black text-white py-4 rounded-2xl text-lg font-semibold"
             >
               Add to Cart
             </button>
+
           </div>
         </div>
       </div>
