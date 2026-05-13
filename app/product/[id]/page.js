@@ -4,31 +4,39 @@ import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { supabase } from "@/lib/supabase"
+import Navbar from "@/components/Navbar"
 
 export default function ProductPage() {
 
   const params = useParams()
+
   const router = useRouter()
 
   const [product, setProduct] = useState(null)
 
-  const [selectedSize, setSelectedSize] = useState("M")
-  const [quantity, setQuantity] = useState(1)
+  const [selectedSize, setSelectedSize] =
+    useState("M")
+
+  const [quantity, setQuantity] =
+    useState(1)
+
+  const [customName, setCustomName] =
+    useState("")
 
   useEffect(() => {
 
     async function fetchProduct() {
 
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("id", params.id)
-        .single()
+      const { data, error } =
+        await supabase
+          .from("products")
+          .select("*")
+          .eq("id", params.id)
+          .single()
 
-      if (error) {
-        console.log(error)
-        return
-      }
+      console.log(data)
+
+      console.log(error)
 
       setProduct(data)
     }
@@ -44,60 +52,50 @@ export default function ProductPage() {
     } = await supabase.auth.getUser()
 
     if (!user) {
+
       router.push("/login")
+
       return
     }
 
     if (!product) {
+
       alert("Product not loaded")
+
       return
     }
 
     const email = user.email
 
-    // CHECK IF ITEM ALREADY EXISTS
+    const payload = {
 
-    const { data: existing } = await supabase
-      .from("cart_items")
-      .select("*")
-      .eq("user_email", email)
-      .eq("product_id", product.id)
-      .eq("size", selectedSize)
-      .maybeSingle()
+      user_email: email,
 
-    if (existing) {
+      product_id: product.id,
 
-      const { error } = await supabase
+      quantity: quantity,
+
+      size: selectedSize,
+
+      custom_name: customName,
+    }
+
+    console.log(payload)
+
+    const { error } =
+      await supabase
         .from("cart_items")
-        .update({
-          quantity: existing.quantity + quantity,
-        })
-        .eq("id", existing.id)
+        .insert([payload])
 
-      if (error) {
-        console.log(error)
-        alert(error.message)
-        return
-      }
+    console.log(error)
 
-    } else {
+    if (error) {
 
-      const { error } = await supabase
-        .from("cart_items")
-        .insert([
-          {
-            user_email: email,
-            product_id: product.id,
-            quantity,
-            size: selectedSize,
-          },
-        ])
+      console.log(error)
 
-      if (error) {
-        console.log(error)
-        alert(error.message)
-        return
-      }
+      alert(error.message)
+
+      return
     }
 
     alert("Added to cart")
@@ -106,73 +104,70 @@ export default function ProductPage() {
   }
 
   if (!product) {
+
     return (
+
       <div className="min-h-screen flex items-center justify-center">
         Loading...
       </div>
+
     )
   }
 
   return (
+
     <div className="min-h-screen bg-gray-100 p-6">
+
+      <Navbar />
 
       <div className="max-w-5xl mx-auto">
 
-        <div className="flex justify-between items-center mb-6">
+        <Link href="/products">
 
-          <Link href="/products">
+          <button className="mb-6 border px-4 py-2 rounded-xl bg-white">
 
-            <button className="border px-4 py-2 rounded-xl bg-white">
-              ← Back to Products
-            </button>
+            ← Back to Products
 
-          </Link>
+          </button>
 
-          <Link href="/cart">
-
-            <button className="border px-4 py-2 rounded-xl bg-white">
-              View Cart
-            </button>
-
-          </Link>
-        </div>
+        </Link>
 
         <div className="grid md:grid-cols-2 gap-8 bg-white rounded-2xl shadow p-6">
 
-          {/* IMAGE */}
-
-          <div>
-
-            <img
-              src={product.image_url}
-              alt={product.name}
-              className="w-full rounded-2xl object-cover"
-            />
-
-          </div>
-
-          {/* DETAILS */}
+          <img
+            src={product.image_url}
+            alt={product.name}
+            className="w-full rounded-2xl"
+          />
 
           <div>
 
             <h1 className="text-4xl font-bold mb-4">
+
               {product.name}
+
             </h1>
 
             <p className="text-gray-600 mb-6">
+
               {product.description}
+
             </p>
 
-            <p className="text-3xl font-bold mb-8">
+            <p className="text-3xl font-bold mb-6">
+
               ₹{product.price}
+
             </p>
 
             {/* SIZE */}
 
             <div className="mb-6">
 
-              <p className="font-semibold mb-3">
-                Select Size
+              <p className="font-semibold mb-2">
+
+                Size
+
               </p>
 
               <div className="flex gap-3">
@@ -181,56 +176,73 @@ export default function ProductPage() {
 
                   <button
                     key={size}
-                    onClick={() => setSelectedSize(size)}
+                    onClick={() =>
+                      setSelectedSize(size)
+                    }
                     className={`px-4 py-2 rounded-xl border ${
                       selectedSize === size
                         ? "bg-black text-white"
                         : "bg-white"
                     }`}
                   >
+
                     {size}
+
                   </button>
 
                 ))}
+
               </div>
+
+            </div>
+
+            {/* CUSTOM NAME */}
+
+            <div className="mb-6">
+
+              <p className="font-semibold mb-3">
+
+                Name to Print (Optional)
+
+              </p>
+
+              <input
+                type="text"
+                placeholder="Enter custom name"
+                value={customName}
+                onChange={(e) =>
+                  setCustomName(e.target.value)
+                }
+                className="w-full border p-3 rounded-xl"
+              />
+
             </div>
 
             {/* QUANTITY */}
 
-            <div className="mb-8">
+            <div className="mb-6">
 
-              <p className="font-semibold mb-3">
+              <p className="font-semibold mb-2">
+
                 Quantity
+
               </p>
 
-              <div className="flex items-center gap-4">
+              <input
+                type="number"
+                min="1"
+                value={quantity}
+                onChange={(e) =>
+                  setQuantity(
+                    Number(e.target.value)
+                  )
+                }
+                className="border p-2 rounded-xl w-24"
+              />
 
-                <button
-                  onClick={() =>
-                    setQuantity(Math.max(1, quantity - 1))
-                  }
-                  className="border px-4 py-2 rounded-xl bg-white"
-                >
-                  -
-                </button>
-
-                <span className="text-xl font-bold">
-                  {quantity}
-                </span>
-
-                <button
-                  onClick={() =>
-                    setQuantity(quantity + 1)
-                  }
-                  className="border px-4 py-2 rounded-xl bg-white"
-                >
-                  +
-                </button>
-
-              </div>
             </div>
 
-            {/* ACTIONS */}
+            {/* BUTTONS */}
 
             <div className="flex gap-4">
 
@@ -238,63 +250,70 @@ export default function ProductPage() {
                 onClick={addToCart}
                 className="flex-1 bg-black text-white py-4 rounded-2xl text-lg font-semibold"
               >
+
                 Add to Cart
+
               </button>
 
               <button
-  onClick={async () => {
+                onClick={async () => {
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+                  const {
+                    data: { user },
+                  } = await supabase.auth.getUser()
 
-    if (!user) {
-      router.push("/login")
-      return
-    }
+                  if (!user) {
 
-    const email = user.email
+                    router.push("/login")
 
-    // CHECK IF ITEM EXISTS
+                    return
+                  }
 
-    const { data: existing } = await supabase
-      .from("cart_items")
-      .select("*")
-      .eq("user_email", email)
-      .eq("product_id", product.id)
-      .eq("size", selectedSize)
-      .maybeSingle()
+                  const email = user.email
 
-    if (existing) {
+                  const { data: existing } =
+                    await supabase
+                      .from("cart_items")
+                      .select("*")
+                      .eq("user_email", email)
+                      .eq("product_id", product.id)
+                      .eq("size", selectedSize)
+                      .maybeSingle()
 
-      await supabase
-        .from("cart_items")
-        .update({
-          quantity: existing.quantity + quantity,
-        })
-        .eq("id", existing.id)
+                  if (existing) {
 
-    } else {
+                    await supabase
+                      .from("cart_items")
+                      .update({
+                        quantity:
+                          existing.quantity + quantity,
+                      })
+                      .eq("id", existing.id)
 
-      await supabase
-        .from("cart_items")
-        .insert([
-          {
-            user_email: email,
-            product_id: product.id,
-            quantity,
-            size: selectedSize,
-          },
-        ])
-    }
+                  } else {
 
-    router.push("/checkout")
+                    await supabase
+                      .from("cart_items")
+                      .insert([
+                        {
+                          user_email: email,
+                          product_id: product.id,
+                          quantity,
+                          size: selectedSize,
+                          custom_name: customName,
+                        },
+                      ])
+                  }
 
-  }}
-  className="flex-1 border py-4 rounded-2xl text-lg font-semibold bg-white"
->
-  Checkout
-</button>
+                  router.push("/checkout")
+
+                }}
+                className="flex-1 border py-4 rounded-2xl text-lg font-semibold bg-white"
+              >
+
+                Checkout
+
+              </button>
 
             </div>
 
