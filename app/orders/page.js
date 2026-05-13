@@ -33,7 +33,7 @@ export default function OrdersPage() {
         .from("orders")
         .select("*")
         .eq("email", email)
-        .order("created_at", { ascending: false })
+        .order("timestamp", { ascending: false })
 
       if (!ordersData || ordersData.length === 0) {
         setOrders([])
@@ -216,7 +216,7 @@ export default function OrdersPage() {
                 <div className="mt-6 text-sm text-gray-500">
 
                   Ordered on{" "}
-                  {new Date(order.created_at)
+                  {new Date(order.timestamp)
                     .toLocaleString()}
 
                 </div>
