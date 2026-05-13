@@ -19,9 +19,6 @@ export default function CheckoutPage() {
   const [phone, setPhone] =
     useState("")
 
-  const [address, setAddress] =
-    useState("")
-
   useEffect(() => {
 
     fetchCart()
@@ -99,8 +96,7 @@ export default function CheckoutPage() {
 
     if (
       !customerName ||
-      !phone ||
-      !address
+      !phone
     ) {
 
       alert("Please fill all details")
@@ -117,7 +113,6 @@ export default function CheckoutPage() {
           {
             customer_name: customerName,
             phone,
-            address,
             email: user.email,
             total_amount: total,
             status: "created",
@@ -240,15 +235,6 @@ export default function CheckoutPage() {
                   setPhone(e.target.value)
                 }
                 className="w-full border p-3 rounded-xl"
-              />
-
-              <textarea
-                placeholder="Delivery Address"
-                value={address}
-                onChange={(e) =>
-                  setAddress(e.target.value)
-                }
-                className="w-full border p-3 rounded-xl h-32"
               />
 
             </div>
