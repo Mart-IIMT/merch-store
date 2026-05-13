@@ -144,13 +144,17 @@ export default function PaymentPage() {
         .from("orders")
         .update({
 
-          utr: utr,
+  utr: utr,
 
-          screenshot_url: fileUrl,
+  screenshot_url: fileUrl,
 
-          status: "paid",
+  payments: fileUrl,
 
-        })
+  timestamp: new Date(),
+
+  status: "paid",
+
+})
         .eq("id", orderId)
 
     if (error) {
