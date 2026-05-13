@@ -16,9 +16,11 @@ export default function CheckoutPage() {
   const [customerName, setCustomerName] = useState("")
   const [phone, setPhone] = useState("")
 
+  const [userEmail, setUserEmail] = useState("")
+
   useEffect(() => {
 
-    async function checkAuth() {
+    async function loadCheckout() {
 
       const {
         data: { session },
@@ -29,15 +31,46 @@ export default function CheckoutPage() {
         return
       }
 
+      const email = session.user.email
+
+      setUserEmail(email)
+
+      // FETCH CART ITEMS
+
+      const { data: cartItems } = await supabase
+        .from("cart_items")
+        .select("*")
+        .eq("user_email", email)
+
+      // FETCH PRODUCTS
+
+      const productIds =
+        cartItems?.map(item => item.product_id) || []
+
+      const { data: products } = await supabase
+        .from("products")
+        .select("*")
+        .in("id", productIds)
+
+      // MERGE
+
+      const mergedCart = cartItems.map(item => {
+
+        const product =
+          products.find(p => p.id === item.product_id)
+
+        return {
+          ...item,
+          product,
+        }
+      })
+
+      setCart(mergedCart)
+
       setLoading(false)
     }
 
-    checkAuth()
-
-    const savedCart =
-      JSON.parse(localStorage.getItem("cart")) || []
-
-    setCart(savedCart)
+    loadCheckout()
 
   }, [])
 
@@ -51,17 +84,20 @@ export default function CheckoutPage() {
 
   const total = cart.reduce(
     (sum, item) =>
-      sum + Number(item.price) * Number(item.quantity),
+      sum +
+      Number(item.product?.price || 0) *
+      Number(item.quantity),
     0
   )
 
   async function handleCheckout() {
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    if (!customerName || !phone) {
+      alert("Please fill all details")
+      return
+    }
 
-    const email = user?.email || ""
+    // CREATE ORDER
 
     const { data: order, error } = await supabase
       .from("orders")
@@ -69,7 +105,7 @@ export default function CheckoutPage() {
         {
           customer_name: customerName,
           phone,
-          email,
+          email: userEmail,
           total_amount: total,
           status: "created",
         },
@@ -82,17 +118,28 @@ export default function CheckoutPage() {
       return
     }
 
+    // CREATE ORDER ITEMS
+
     const orderItems = cart.map(item => ({
       order_id: order.id,
-      product_id: item.id,
+      product_id: item.product_id,
       quantity: item.quantity,
       size: item.size,
-      item_price: item.price,
+      item_price: item.product?.price,
     }))
 
     await supabase
       .from("order_items")
       .insert(orderItems)
+
+    // CLEAR USER CART
+
+    await supabase
+      .from("cart_items")
+      .delete()
+      .eq("user_email", userEmail)
+
+    // GO TO PAYMENT
 
     router.push(`/payment?order_id=${order.id}`)
   }
@@ -100,69 +147,106 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-gray-100 p-6">
 
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-4xl mx-auto">
 
-        <h1 className="text-3xl font-bold mb-6">
-          Checkout
-        </h1>
+        <div className="flex justify-between items-center mb-6">
 
-        <div className="bg-white p-6 rounded-xl shadow">
+          <h1 className="text-3xl font-bold">
+            Checkout
+          </h1>
 
-          <input
-            placeholder="Full Name"
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-            className="w-full border p-3 rounded mb-4"
-          />
+          <Link href="/cart">
 
-          <input
-            placeholder="Phone Number"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="w-full border p-3 rounded mb-4"
-          />
+            <button className="border px-4 py-2 rounded-xl bg-white">
+              Back to Cart
+            </button>
 
-          <div className="border-t pt-4">
+          </Link>
+        </div>
 
-            <h2 className="font-bold mb-4">
+        <div className="grid md:grid-cols-2 gap-6">
+
+          {/* LEFT */}
+
+          <div className="bg-white rounded-2xl shadow p-6">
+
+            <h2 className="text-xl font-bold mb-4">
+              Customer Details
+            </h2>
+
+            <input
+              placeholder="Full Name"
+              value={customerName}
+              onChange={(e) =>
+                setCustomerName(e.target.value)
+              }
+              className="w-full border p-3 rounded-xl mb-4"
+            />
+
+            <input
+              placeholder="Phone Number"
+              value={phone}
+              onChange={(e) =>
+                setPhone(e.target.value)
+              }
+              className="w-full border p-3 rounded-xl"
+            />
+
+          </div>
+
+          {/* RIGHT */}
+
+          <div className="bg-white rounded-2xl shadow p-6">
+
+            <h2 className="text-xl font-bold mb-4">
               Order Summary
             </h2>
 
-            {cart.map((item, index) => (
+            <div className="space-y-4">
 
-              <div
-                key={index}
-                className="flex justify-between mb-2"
-              >
-                <span>
-                  {item.name} × {item.quantity}
-                </span>
+              {cart.map((item) => (
 
-                <span>
-                  ₹{Number(item.price) * Number(item.quantity)}
-                </span>
-              </div>
-            ))}
+                <div
+                  key={item.id}
+                  className="flex justify-between"
+                >
 
-            <div className="flex justify-between font-bold text-xl mt-4">
+                  <div>
+
+                    <p className="font-semibold">
+                      {item.product?.name}
+                    </p>
+
+                    <p className="text-sm text-gray-500">
+                      {item.size} × {item.quantity}
+                    </p>
+
+                  </div>
+
+                  <p className="font-semibold">
+                    ₹
+                    {Number(item.product?.price || 0) *
+                      Number(item.quantity)}
+                  </p>
+
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t mt-6 pt-6 flex justify-between text-2xl font-bold">
+
               <span>Total</span>
+
               <span>₹{total}</span>
+
             </div>
 
             <button
               onClick={handleCheckout}
-              className="w-full mt-6 bg-black text-white py-3 rounded-xl"
+              className="w-full mt-6 bg-black text-white py-4 rounded-2xl text-lg font-semibold"
             >
               Continue to Payment
             </button>
-
-            <Link href="/cart">
-
-              <button className="w-full mt-3 border py-3 rounded-xl">
-                Back to Cart
-              </button>
-
-            </Link>
 
           </div>
         </div>

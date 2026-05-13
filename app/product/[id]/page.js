@@ -5,6 +5,8 @@ import { useParams } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { addToCart } from "@/lib/cart"
 import Navbar from "@/components/Navbar"
+import { supabase } from "@/lib/supabase"
+import { useRouter } from "next/navigation"
 
 export default function ProductPage() {
   const params = useParams()
@@ -30,13 +32,54 @@ export default function ProductPage() {
   if (!product) return <div className="p-6">Loading...</div>
 
   function handleAddToCart() {
-    addToCart({
-      product_id: product.id,
-      name: product.name,
-      price: product.price,
-      size,
-      quantity
-    })
+    async function addToCart() {
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    router.push("/login")
+    return
+  }
+
+  const email = user.email
+
+  // CHECK EXISTING ITEM
+
+  const { data: existing } = await supabase
+    .from("cart_items")
+    .select("*")
+    .eq("user_email", email)
+    .eq("product_id", product.id)
+    .eq("size", selectedSize)
+    .single()
+
+  if (existing) {
+
+    await supabase
+      .from("cart_items")
+      .update({
+        quantity: existing.quantity + quantity,
+      })
+      .eq("id", existing.id)
+
+  } else {
+
+    await supabase
+      .from("cart_items")
+      .insert([
+        {
+          user_email: email,
+          product_id: product.id,
+          quantity,
+          size: selectedSize,
+        },
+      ])
+  }
+
+  alert("Added to cart")
+}
 
     alert("Added to cart")
   }
