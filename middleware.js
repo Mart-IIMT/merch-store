@@ -2,6 +2,34 @@ import { NextResponse } from "next/server"
 
 export default function middleware(req) {
 
+  const path = req.nextUrl.pathname
+
+  // PUBLIC ROUTES
+
+  const publicRoutes = [
+
+    "/login",
+    "/auth",
+
+    "/_next",
+    "/favicon.ico",
+
+  ]
+
+  const isPublic =
+    publicRoutes.some(route =>
+      path.startsWith(route)
+    )
+
+  // ALLOW PUBLIC ROUTES
+
+  if (isPublic) {
+
+    return NextResponse.next()
+  }
+
+  // PROTECTED ROUTES
+
   const protectedRoutes = [
 
     "/products",
@@ -13,21 +41,17 @@ export default function middleware(req) {
 
   ]
 
-  const path = req.nextUrl.pathname
-
   const isProtected =
     protectedRoutes.some(route =>
       path.startsWith(route)
     )
-
-  // ALLOW PUBLIC ROUTES
 
   if (!isProtected) {
 
     return NextResponse.next()
   }
 
-  // CHECK AUTH TOKEN
+  // CHECK TOKEN
 
   const token =
     req.cookies.get(
