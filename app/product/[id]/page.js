@@ -5,7 +5,6 @@ import { useParams } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { addToCart } from "@/lib/cart"
 import Navbar from "@/components/Navbar"
-import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
 
 export default function ProductPage() {
