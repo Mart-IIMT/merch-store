@@ -241,13 +241,60 @@ export default function ProductPage() {
                 Add to Cart
               </button>
 
-              <Link href="/checkout" className="flex-1">
+              <button
+  onClick={async () => {
 
-                <button className="w-full border py-4 rounded-2xl text-lg font-semibold bg-white">
-                  Checkout
-                </button>
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-              </Link>
+    if (!user) {
+      router.push("/login")
+      return
+    }
+
+    const email = user.email
+
+    // CHECK IF ITEM EXISTS
+
+    const { data: existing } = await supabase
+      .from("cart_items")
+      .select("*")
+      .eq("user_email", email)
+      .eq("product_id", product.id)
+      .eq("size", selectedSize)
+      .maybeSingle()
+
+    if (existing) {
+
+      await supabase
+        .from("cart_items")
+        .update({
+          quantity: existing.quantity + quantity,
+        })
+        .eq("id", existing.id)
+
+    } else {
+
+      await supabase
+        .from("cart_items")
+        .insert([
+          {
+            user_email: email,
+            product_id: product.id,
+            quantity,
+            size: selectedSize,
+          },
+        ])
+    }
+
+    router.push("/checkout")
+
+  }}
+  className="flex-1 border py-4 rounded-2xl text-lg font-semibold bg-white"
+>
+  Checkout
+</button>
 
             </div>
 
