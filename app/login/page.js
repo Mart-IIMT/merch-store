@@ -5,10 +5,11 @@ import { supabase } from "@/lib/supabase"
 export default function LoginPage() {
 
   async function signInWithGoogle() {
+
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: "https://merch-store-six.vercel.app/products"
+        redirectTo: "https://merch-store-six.vercel.app/auth/callback"
       }
     })
   }
@@ -23,14 +24,14 @@ export default function LoginPage() {
         </h1>
 
         <p className="text-gray-500 text-center mb-6">
-          Continue with Google
+          Sign in using your institute email
         </p>
 
         <button
           onClick={signInWithGoogle}
-          className="w-full bg-black text-white py-3 rounded-xl"
+          className="w-full bg-black text-white py-3 rounded-xl hover:opacity-90 transition"
         >
-          Sign in with Google
+          Continue with Google
         </button>
 
       </div>

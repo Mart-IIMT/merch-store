@@ -1,80 +1,123 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import {
-  getCart,
-  removeFromCart,
-  updateQuantity
-} from "@/lib/cart"
-import Navbar from "@/components/Navbar"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { supabase } from "@/lib/supabase"
 
 export default function CartPage() {
+
+  const router = useRouter()
+
+  const [loading, setLoading] = useState(true)
   const [cart, setCart] = useState([])
 
   useEffect(() => {
-    setCart(getCart())
+
+    async function checkAuth() {
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (!session) {
+        router.push("/login")
+        return
+      }
+
+      setLoading(false)
+    }
+
+    checkAuth()
+
+    const savedCart =
+      JSON.parse(localStorage.getItem("cart")) || []
+
+    setCart(savedCart)
+
   }, [])
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Loading...
+      </div>
+    )
+  }
+
   const total = cart.reduce(
-    (sum, item) => sum + item.price * item.quantity,
+    (sum, item) =>
+      sum + Number(item.price) * Number(item.quantity),
     0
   )
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
+    <div className="min-h-screen bg-gray-100 p-6">
 
-      <div className="p-6 max-w-xl mx-auto">
-        <h1 className="text-2xl font-semibold mb-4">Cart</h1>
+      <div className="max-w-3xl mx-auto">
 
-        {cart.map((item, i) => (
-          <div
-            key={i}
-            className="flex justify-between items-center bg-white p-4 rounded shadow-sm mb-3"
-          >
-            <div>
-              <p className="font-medium">{item.name}</p>
-              <p className="text-sm text-gray-500">
-                Size: {item.size}
-              </p>
+        <h1 className="text-3xl font-bold mb-6">
+          Your Cart
+        </h1>
+
+        {cart.length === 0 ? (
+          <div className="bg-white p-6 rounded-xl shadow">
+            Cart is empty
+          </div>
+        ) : (
+          <>
+            <div className="space-y-4">
+
+              {cart.map((item, index) => (
+
+                <div
+                  key={index}
+                  className="bg-white p-4 rounded-xl shadow flex gap-4"
+                >
+
+                  <img
+                    src={item.image_url}
+                    alt={item.name}
+                    className="w-24 h-24 object-cover rounded"
+                  />
+
+                  <div className="flex-1">
+
+                    <h2 className="font-bold text-lg">
+                      {item.name}
+                    </h2>
+
+                    <p>Size: {item.size}</p>
+
+                    <p>Qty: {item.quantity}</p>
+
+                    <p className="font-semibold">
+                      ₹{item.price}
+                    </p>
+
+                  </div>
+                </div>
+              ))}
             </div>
 
-            <input
-              type="number"
-              value={item.quantity}
-              onChange={(e) => {
-                updateQuantity(i, Number(e.target.value))
-                setCart(getCart())
-              }}
-              className="border p-1 w-16 rounded"
-            />
+            <div className="bg-white p-6 rounded-xl shadow mt-6">
 
-            <button
-              onClick={() => {
-                removeFromCart(i)
-                setCart(getCart())
-              }}
-              className="text-red-500 text-sm"
-            >
-              Remove
-            </button>
-          </div>
-        ))}
+              <div className="flex justify-between text-xl font-bold">
+                <span>Total</span>
+                <span>₹{total}</span>
+              </div>
 
-        <div className="bg-white p-4 rounded shadow-sm mt-4">
-          <h2 className="font-semibold">
-            Total: ₹{total}
-          </h2>
+              <Link href="/checkout">
 
-          <button
-            onClick={() =>
-              (window.location.href = "/checkout")
-            }
-            className="mt-3 bg-black text-white w-full py-2 rounded"
-          >
-            Checkout
-          </button>
-        </div>
+                <button className="w-full mt-6 bg-black text-white py-3 rounded-xl">
+                  Proceed to Checkout
+                </button>
+
+              </Link>
+
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
