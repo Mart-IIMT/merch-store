@@ -279,13 +279,16 @@ export default function PaymentPage() {
         </h3>
 
         <img
-          src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=yourupi@bank&pn=YourName&am=${amount}`}
-          className="my-4"
-        />
+  src="/upi-qr.png"
+  className="my-4 w-56 rounded-xl border"
+/>
+<p>
+  Merchant Name: IIMT MART
+</p>
 
-        <p>
-          UPI ID: yourupi@bank
-        </p>
+<p>
+  Scan the QR and upload payment proof below
+</p>
 
         <hr className="my-4" />
 
