@@ -158,7 +158,7 @@ export default function AdminPage() {
           const n = index + 1
 
           row[
-            `T-shirt Variant Selection (Order ${n})`
+            `Product (Order ${n})`
           ] =
             item.product_name ||
             item.products?.name
@@ -174,7 +174,7 @@ export default function AdminPage() {
             item.quantity
 
           row[
-            `Custom Name (Order ${n})`
+            `Customization (Order ${n})`
           ] =
             item.custom_name
         }
