@@ -15,9 +15,16 @@ export default function CheckoutPage() {
 
   const [customerName, setCustomerName] =
     useState("")
+const [phone, setPhone] =
+  useState("")
+  const [rollNo, setRollNo] =
+  useState("")
 
-  const [phone, setPhone] =
-    useState("")
+const [batch, setBatch] =
+  useState("")
+
+const [comments, setComments] =
+  useState("")
 
   useEffect(() => {
 
