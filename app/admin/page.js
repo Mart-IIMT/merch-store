@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import Papa from "papaparse"
 
 export default function AdminPage() {
 
@@ -12,7 +13,8 @@ export default function AdminPage() {
 
   const [orders, setOrders] = useState([])
 
-  const [searchPhone, setSearchPhone] = useState("")
+  const [searchPhone, setSearchPhone] =
+    useState("")
 
   useEffect(() => {
 
@@ -23,7 +25,9 @@ export default function AdminPage() {
       } = await supabase.auth.getSession()
 
       if (!session) {
+
         router.push("/login")
+
         return
       }
 
@@ -32,7 +36,9 @@ export default function AdminPage() {
       // ALLOWED ADMINS
 
       const allowedAdmins = [
+
         "mart@iimtrichy.ac.in",
+
       ]
 
       if (!allowedAdmins.includes(email)) {
@@ -44,29 +50,35 @@ export default function AdminPage() {
         return
       }
 
-      loadOrders()
+      await loadOrders()
 
       setLoading(false)
     }
 
     async function loadOrders() {
 
-      const { data, error } = await supabase
-  .from("orders")
-  .select(`
-    *,
-    order_items (
-      *,
-      products (
-        name,
-        image_url
-      )
-    )
-  `)
-  .order("timestamp", { ascending: false })
+      const { data, error } =
+        await supabase
+          .from("orders")
+          .select(`
+            *,
+            order_items (
+              *,
+              products (
+                name,
+                image_url
+              )
+            )
+          `)
+          .order(
+            "created_at",
+            { ascending: false }
+          )
 
       if (error) {
+
         console.log(error)
+
         return
       }
 
@@ -77,42 +89,117 @@ export default function AdminPage() {
 
   }, [router])
 
-  
+  const filteredOrders = orders.filter(order =>
+    order.phone?.includes(searchPhone)
+  )
+
+  const totalRevenue = filteredOrders.reduce(
+
+    (sum, order) =>
+
+      sum +
+      Number(order.total_amount || 0),
+
+    0
+  )
 
   function exportCSV() {
 
-    const headers = [
-      "Customer Name",
-      "Phone",
-      "Email",
-      "Total Amount",
-      "Status",
-      "Created At",
-    ]
+    const rows = []
 
-    const rows = filteredOrders.map(order => [
-      order.customer_name,
-      order.phone,
-      order.email,
-      order.total_amount,
-      order.status,
-      order.created_at,
-    ])
+    filteredOrders.forEach((order) => {
 
-    const csvContent =
-      [
-        headers.join(","),
-        ...rows.map(row => row.join(",")),
-      ].join("\n")
+      const row = {
 
-    const blob = new Blob(
-      [csvContent],
-      { type: "text/csv;charset=utf-8;" }
-    )
+        Timestamp:
+          order.created_at,
 
-    const url = URL.createObjectURL(blob)
+        "Email Address":
+          order.email,
 
-    const link = document.createElement("a")
+        Name:
+          order.customer_name,
+
+        "Roll No":
+          order.roll_no,
+
+        "Phone Number":
+          order.phone,
+
+        Batch:
+          order.batch,
+
+        City:
+          order.city,
+
+        State:
+          order.state,
+
+        Pincode:
+          order.pincode,
+
+        "Additional Comments":
+          order.comments,
+
+        "Amount Paid":
+          order.total_amount,
+
+        "Transaction ID":
+          order.utr,
+
+        "Payment Screenshot":
+          order.screenshot_url,
+      }
+
+      ;(order.order_items || []).forEach(
+
+        (item, index) => {
+
+          const n = index + 1
+
+          row[
+            `T-shirt Variant Selection (Order ${n})`
+          ] =
+            item.product_name ||
+            item.products?.name
+
+          row[
+            `Size (Order ${n})`
+          ] =
+            item.size
+
+          row[
+            `Quantity (Order ${n})`
+          ] =
+            item.quantity
+
+          row[
+            `Custom Name (Order ${n})`
+          ] =
+            item.custom_name
+        }
+      )
+
+      rows.push(row)
+    })
+
+    const csv =
+      Papa.unparse(rows)
+
+    const blob =
+      new Blob(
+        [csv],
+        {
+          type:
+            "text/csv;charset=utf-8;",
+        }
+      )
+
+    const url =
+      URL.createObjectURL(blob)
+
+    const link =
+      document.createElement("a")
 
     link.href = url
 
@@ -129,24 +216,20 @@ export default function AdminPage() {
   }
 
   if (loading) {
+
     return (
+
       <div className="min-h-screen flex items-center justify-center">
+
         Loading...
+
       </div>
+
     )
   }
 
-  const filteredOrders = orders.filter(order =>
-    order.phone?.includes(searchPhone)
-  )
-
-  const totalRevenue = filteredOrders.reduce(
-    (sum, order) =>
-      sum + Number(order.total_amount || 0),
-    0
-  )
-
   return (
+
     <div className="min-h-screen bg-gray-100 p-6">
 
       <div className="max-w-7xl mx-auto">
@@ -156,11 +239,15 @@ export default function AdminPage() {
           <div>
 
             <h1 className="text-4xl font-bold">
+
               Admin Dashboard
+
             </h1>
 
             <p className="text-gray-500 mt-2">
+
               Manage all customer orders
+
             </p>
 
           </div>
@@ -169,7 +256,9 @@ export default function AdminPage() {
             onClick={exportCSV}
             className="bg-black text-white px-5 py-3 rounded-xl"
           >
+
             Export CSV
+
           </button>
 
         </div>
@@ -181,11 +270,15 @@ export default function AdminPage() {
           <div className="bg-white rounded-2xl shadow p-6">
 
             <p className="text-gray-500 mb-2">
+
               Total Orders
+
             </p>
 
             <h2 className="text-4xl font-bold">
+
               {filteredOrders.length}
+
             </h2>
 
           </div>
@@ -193,11 +286,15 @@ export default function AdminPage() {
           <div className="bg-white rounded-2xl shadow p-6">
 
             <p className="text-gray-500 mb-2">
+
               Revenue
+
             </p>
 
             <h2 className="text-4xl font-bold">
+
               ₹{totalRevenue}
+
             </h2>
 
           </div>
@@ -205,7 +302,9 @@ export default function AdminPage() {
           <div className="bg-white rounded-2xl shadow p-6">
 
             <p className="text-gray-500 mb-2">
+
               Confirmed Orders
+
             </p>
 
             <h2 className="text-4xl font-bold">
@@ -253,11 +352,15 @@ export default function AdminPage() {
                 <div>
 
                   <p className="text-gray-500 text-sm">
+
                     Customer
+
                   </p>
 
                   <p className="font-bold">
+
                     {order.customer_name}
+
                   </p>
 
                 </div>
@@ -265,11 +368,15 @@ export default function AdminPage() {
                 <div>
 
                   <p className="text-gray-500 text-sm">
+
                     Phone
+
                   </p>
 
                   <p className="font-bold">
+
                     {order.phone}
+
                   </p>
 
                 </div>
@@ -277,11 +384,15 @@ export default function AdminPage() {
                 <div>
 
                   <p className="text-gray-500 text-sm">
+
                     Email
+
                   </p>
 
                   <p className="font-bold break-all">
+
                     {order.email}
+
                   </p>
 
                 </div>
@@ -289,11 +400,15 @@ export default function AdminPage() {
                 <div>
 
                   <p className="text-gray-500 text-sm">
+
                     Total
+
                   </p>
 
                   <p className="font-bold text-xl">
+
                     ₹{order.total_amount}
+
                   </p>
 
                 </div>
@@ -313,72 +428,114 @@ export default function AdminPage() {
                         : "bg-yellow-100 text-yellow-700"
                     }`}
                   >
+
                     {order.status}
+
                   </span>
 
                 </div>
 
               </div>
-<div className="mt-6 border-t pt-4">
 
-  <h3 className="font-semibold mb-3">
-    Ordered Items
-  </h3>
+              {/* ORDER ITEMS */}
 
-  <div className="space-y-3">
+              <div className="mt-6 border-t pt-4">
 
-    {(order.order_items || []).map((item) => (
+                <h3 className="font-semibold mb-3">
 
-      <div
-        key={item.id}
-        className="flex gap-3 items-center border rounded-xl p-3"
-      >
+                  Ordered Items
 
-        <img
-          src={item.products?.image_url}
-          className="w-14 h-14 rounded-lg object-cover"
-        />
+                </h3>
 
-        <div className="flex-1">
+                <div className="space-y-3">
 
-          <p className="font-medium">
-            {item.product_name ||
-             item.products?.name}
-          </p>
+                  {(order.order_items || []).map(
 
-          <p className="text-sm text-gray-500">
+                    (item) => (
 
-            Size: {item.size}
-            {" • "}
-            Qty: {item.quantity}
+                      <div
+                        key={item.id}
+                        className="flex gap-3 items-center border rounded-xl p-3"
+                      >
 
-          </p>
+                        <img
+                          src={
+                            item.products?.image_url
+                          }
+                          className="w-14 h-14 rounded-lg object-cover"
+                        />
 
-        </div>
+                        <div className="flex-1">
 
-      </div>
-    ))}
+                          <p className="font-medium">
 
-  </div>
+                            {
+                              item.product_name ||
+                              item.products?.name
+                            }
 
-</div>
+                          </p>
 
-{order.payments && (
+                          <p className="text-sm text-gray-500">
 
-  <a
-    href={order.payments}
-    target="_blank"
-    className="inline-block mt-4 bg-black text-white px-4 py-2 rounded-xl"
-  >
-    View Payment Proof
-  </a>
+                            Size:
+                            {" "}
+                            {item.size}
 
-)}
+                            {" • "}
+
+                            Qty:
+                            {" "}
+                            {item.quantity}
+
+                          </p>
+
+                          {item.custom_name && (
+
+                            <p className="text-sm text-gray-500">
+
+                              Custom Name:
+                              {" "}
+                              {item.custom_name}
+
+                            </p>
+
+                          )}
+
+                        </div>
+
+                      </div>
+                    )
+                  )}
+
+                </div>
+
+              </div>
+
+              {/* PAYMENT */}
+
+              {order.screenshot_url && (
+
+                <a
+                  href={order.screenshot_url}
+                  target="_blank"
+                  className="inline-block mt-4 bg-black text-white px-4 py-2 rounded-xl"
+                >
+
+                  View Payment Proof
+
+                </a>
+
+              )}
+
               <div className="mt-4 text-sm text-gray-500">
 
                 Ordered on{" "}
-                {new Date(order.created_at)
-                  .toLocaleString()}
+
+                {
+                  new Date(order.created_at)
+                    .toLocaleString()
+                }
 
               </div>
 
@@ -386,7 +543,9 @@ export default function AdminPage() {
           ))}
 
         </div>
+
       </div>
+
     </div>
   )
 }
