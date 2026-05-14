@@ -120,7 +120,20 @@ const [comments, setComments] =
           {
             customer_name: customerName,
             phone,
-            email: user.email,
+
+roll_no: rollNo,
+
+batch,
+
+city,
+
+state: stateName,
+
+pincode,
+
+comments,
+
+email: user.email,
             total_amount: total,
             status: "created",
           },
@@ -243,6 +256,65 @@ const [comments, setComments] =
                 }
                 className="w-full border p-3 rounded-xl"
               />
+
+              <input
+  type="text"
+  placeholder="Roll Number"
+  value={rollNo}
+  onChange={(e) =>
+    setRollNo(e.target.value)
+  }
+  className="w-full border p-3 rounded-xl"
+/>
+
+<input
+  type="text"
+  placeholder="Batch"
+  value={batch}
+  onChange={(e) =>
+    setBatch(e.target.value)
+  }
+  className="w-full border p-3 rounded-xl"
+/>
+
+<input
+  type="text"
+  placeholder="City"
+  value={city}
+  onChange={(e) =>
+    setCity(e.target.value)
+  }
+  className="w-full border p-3 rounded-xl"
+/>
+
+<input
+  type="text"
+  placeholder="State"
+  value={stateName}
+  onChange={(e) =>
+    setStateName(e.target.value)
+  }
+  className="w-full border p-3 rounded-xl"
+/>
+
+<input
+  type="text"
+  placeholder="Pincode"
+  value={pincode}
+  onChange={(e) =>
+    setPincode(e.target.value)
+  }
+  className="w-full border p-3 rounded-xl"
+/>
+
+<textarea
+  placeholder="Additional Comments"
+  value={comments}
+  onChange={(e) =>
+    setComments(e.target.value)
+  }
+  className="w-full border p-3 rounded-xl h-28"
+/>
 
             </div>
 
