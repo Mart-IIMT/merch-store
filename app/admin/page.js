@@ -129,14 +129,7 @@ export default function AdminPage() {
         Batch:
           order.batch,
 
-        City:
-          order.city,
-
-        State:
-          order.state,
-
-        Pincode:
-          order.pincode,
+  
 
         "Additional Comments":
           order.comments,
